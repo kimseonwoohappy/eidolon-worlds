@@ -1,0 +1,181 @@
+const worlds=[
+  {title:'FROZEN ORBIT',image:'frozen-orbit.png',accent:'#8ce8ff'},
+  {title:'CORAL CROWN',image:'coral-crown.png',accent:'#5ff7e3'},
+  {title:'FORGE DEPTHS',image:'forge-depths.png',accent:'#ff7d32'},
+  {title:'AETHER REACH',image:'aether-reach.png',accent:'#ffd58a'},
+  {title:'SUNVAULT',image:'sunvault.png',accent:'#ffbd55'},
+  {title:'NOCTURNE MARSH',image:'nocturne-marsh.png',accent:'#9c82ff'},
+  {title:'VERDANT ENGINE',image:'verdant-engine.png',video:'verdant-engine.mp4',accent:'#80e0b2'},
+  {title:'NEW MERIDIAN',image:'new-meridian.png',accent:'#65c9ff'}
+];
+
+const atlas=document.querySelector('#atlas');
+const game=document.querySelector('#game');
+const worldImage=document.querySelector('#worldImage');
+const worldTitle=document.querySelector('#worldTitle');
+const currentIndex=document.querySelector('#currentIndex');
+const rail=document.querySelector('#worldRail');
+const card=document.querySelector('#worldCard');
+const diorama=document.querySelector('#diorama');
+const terrain=document.querySelector('#terrain');
+const terrainImage=document.querySelector('#terrainImage');
+const terrainVideo=document.querySelector('#terrainVideo');
+const curtain=document.querySelector('#curtain');
+const zoomValue=document.querySelector('#zoomValue');
+
+let active=0;
+let playing=false;
+let dragging=false;
+let dragStart=null;
+let lastTime=performance.now();
+const keys=new Set();
+const view={zoom:1,x:0,y:0,rx:0,ry:0};
+
+worlds.forEach((world,index)=>{
+  const button=document.createElement('button');
+  button.className='world-thumb'+(index===0?' active':'');
+  button.setAttribute('aria-label',world.title);
+  button.innerHTML=`<img src="./assets/${world.image}" alt="" />`;
+  button.addEventListener('click',()=>selectWorld(index));
+  rail.append(button);
+});
+
+function selectWorld(next){
+  active=(next+worlds.length)%worlds.length;
+  const world=worlds[active];
+  worldImage.style.opacity='0';
+  setTimeout(()=>{worldImage.src=`./assets/${world.image}`;worldImage.alt=`${world.title} world`;worldImage.style.opacity='1'},130);
+  worldTitle.textContent=world.title;
+  currentIndex.textContent=String(active+1).padStart(2,'0');
+  document.querySelector('.eyebrow').textContent=`WORLD ${currentIndex.textContent}`;
+  document.documentElement.style.setProperty('--accent',world.accent);
+  [...rail.children].forEach((element,index)=>element.classList.toggle('active',index===active));
+  rail.children[active].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+}
+
+function clamp(value,min,max){return Math.max(min,Math.min(max,value))}
+
+function renderView(){
+  terrain.style.transform=`translate3d(calc(-50% + ${view.x}px),calc(-50% + ${view.y}px),0) rotateX(${view.rx}deg) rotateY(${view.ry}deg) scale(${view.zoom})`;
+  zoomValue.textContent=String(Math.round(view.zoom*100));
+}
+
+function resetView(){
+  view.zoom=innerWidth<721?.68:1;
+  view.x=0;view.y=0;view.rx=0;view.ry=0;
+  renderView();
+}
+
+function setZoom(next){
+  view.zoom=clamp(next,.68,2.4);
+  if(view.zoom<.95){view.x=0;view.y=0}
+  renderView();
+}
+
+function enterWorld(){
+  const world=worlds[active];
+  curtain.classList.add('show');
+  setTimeout(()=>{
+    playing=true;
+    terrain.classList.toggle('video-mode',Boolean(world.video));
+    if(world.video){
+      if(!terrainVideo.src)terrainVideo.src='./assets/verdant-engine.mp4';
+      terrainVideo.play().catch(()=>{});
+    }else{
+      terrainVideo.pause();
+      terrainImage.src=`./assets/${world.image}`;
+      terrainImage.alt=`${world.title} isometric world`;
+    }
+    document.querySelector('#gameTitle').textContent=world.title;
+    document.querySelector('#gameIndex').textContent=`WORLD ${String(active+1).padStart(2,'0')}`;
+    game.style.setProperty('--accent',world.accent);
+    document.querySelector('#gameSky').style.background=`radial-gradient(ellipse at 50% 42%,${world.accent}50,transparent 55%),linear-gradient(180deg,#141923,#04060a 80%)`;
+    resetView();
+    atlas.setAttribute('aria-hidden','true');
+    game.classList.add('active');
+    game.setAttribute('aria-hidden','false');
+    setTimeout(()=>curtain.classList.remove('show'),180);
+  },220);
+}
+
+function exitWorld(){
+  curtain.classList.add('show');
+  setTimeout(()=>{
+    playing=false;
+    dragging=false;
+    keys.clear();
+    terrainVideo.pause();
+    game.classList.remove('active');
+    game.setAttribute('aria-hidden','true');
+    atlas.setAttribute('aria-hidden','false');
+    setTimeout(()=>curtain.classList.remove('show'),180);
+  },220);
+}
+
+function tick(time){
+  const dt=Math.min(32,time-lastTime);
+  lastTime=time;
+  if(playing&&!dragging){
+    const speed=.36*dt;
+    const dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);
+    const dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
+    if(dx||dy){view.x=clamp(view.x+dx*speed,-innerWidth*.65,innerWidth*.65);view.y=clamp(view.y+dy*speed,-innerHeight*.55,innerHeight*.55);renderView()}
+  }
+  requestAnimationFrame(tick);
+}
+
+document.querySelector('#prevWorld').addEventListener('click',()=>selectWorld(active-1));
+document.querySelector('#nextWorld').addEventListener('click',()=>selectWorld(active+1));
+document.querySelector('#enterWorld').addEventListener('click',enterWorld);
+document.querySelector('#exitWorld').addEventListener('click',exitWorld);
+document.querySelector('#resetView').addEventListener('click',resetView);
+document.querySelector('#zoomIn').addEventListener('click',()=>setZoom(view.zoom+.18));
+document.querySelector('#zoomOut').addEventListener('click',()=>setZoom(view.zoom-.18));
+document.querySelector('#fullScreen').addEventListener('click',()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()});
+
+document.addEventListener('keydown',event=>{
+  const key=event.key.toLowerCase();
+  if(playing){
+    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key)){event.preventDefault();keys.add(key)}
+    if(key==='escape')exitWorld();
+    if(key==='0')resetView();
+  }else{
+    if(key==='arrowleft')selectWorld(active-1);
+    if(key==='arrowright')selectWorld(active+1);
+    if(key==='enter')enterWorld();
+  }
+});
+document.addEventListener('keyup',event=>keys.delete(event.key.toLowerCase()));
+
+diorama.addEventListener('pointerdown',event=>{
+  if(event.target.closest('button'))return;
+  dragging=true;
+  diorama.classList.add('dragging');
+  diorama.setPointerCapture(event.pointerId);
+  dragStart={px:event.clientX,py:event.clientY,x:view.x,y:view.y,rx:view.rx,ry:view.ry};
+});
+diorama.addEventListener('pointermove',event=>{
+  if(!dragging||!dragStart)return;
+  const dx=event.clientX-dragStart.px,dy=event.clientY-dragStart.py;
+  view.ry=clamp(dragStart.ry+dx*.018,-5.5,5.5);
+  view.rx=clamp(dragStart.rx-dy*.014,-3.5,3.5);
+  if(view.zoom>.92){view.x=clamp(dragStart.x+dx*.72,-innerWidth*.65,innerWidth*.65);view.y=clamp(dragStart.y+dy*.72,-innerHeight*.55,innerHeight*.55)}
+  renderView();
+});
+function endDrag(){dragging=false;dragStart=null;diorama.classList.remove('dragging')}
+diorama.addEventListener('pointerup',endDrag);diorama.addEventListener('pointercancel',endDrag);
+diorama.addEventListener('dblclick',()=>setZoom(view.zoom<1.35?1.55:1));
+game.addEventListener('wheel',event=>{event.preventDefault();setZoom(view.zoom-event.deltaY*.0008)},{passive:false});
+
+window.addEventListener('resize',()=>{if(playing)resetView()});
+window.addEventListener('blur',()=>{keys.clear();endDrag()});
+document.addEventListener('mousemove',event=>{
+  if(playing||innerWidth<721)return;
+  const rx=(event.clientY/innerHeight-.5)*-2.2;
+  const ry=(event.clientX/innerWidth-.5)*2.6;
+  card.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg)`;
+});
+document.addEventListener('mouseleave',()=>card.style.transform='rotateX(0) rotateY(0)');
+
+selectWorld(0);
+requestAnimationFrame(tick);
