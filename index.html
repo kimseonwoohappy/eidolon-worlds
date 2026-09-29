@@ -3,35 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#05070c" />
+  <meta name="theme-color" content="#dca05e" />
   <meta name="description" content="Explore eight original worlds." />
   <title>Eidolon Worlds</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2305070c'/%3E%3Cpath d='M32 8 38 26 56 32 38 38 32 56 26 38 8 32 26 26Z' fill='%23f0cf8b'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%2305070c'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="./styles.css?v=20260929-1" />
+  <link rel="stylesheet" href="./styles.css?v=20260929-b" />
+  <link rel="stylesheet" href="./environments.css?v=20260929-b" />
 </head>
 <body>
   <main class="atlas" id="atlas" aria-label="World atlas">
     <div class="atlas-backdrop" id="atlasBackdrop" aria-hidden="true">
       <img class="atlas-sky" id="atlasSky" src="./assets/frozen-orbit.png" alt="" />
-      <img class="atlas-depth atlas-depth-far" id="atlasDepthFar" src="./assets/frozen-orbit.png" alt="" />
-      <img class="atlas-depth atlas-depth-near" id="atlasDepthNear" src="./assets/frozen-orbit.png" alt="" />
       <div class="atlas-atmosphere"></div>
-      <div class="atlas-horizon"></div>
-      <div class="atlas-orbit atlas-orbit-a"></div>
-      <div class="atlas-orbit atlas-orbit-b"></div>
     </div>
+    <div class="scenery scenery-middle" aria-hidden="true"><img id="atlasEnvironment" alt="" /></div>
     <header class="topbar">
       <a class="brand" href="#" aria-label="Eidolon Worlds home"><span class="brand-mark">✦</span><span>EIDOLON</span></a>
       <div class="index" aria-label="World index"><span id="currentIndex">01</span><i></i><span>08</span></div>
     </header>
     <section class="world-stage" aria-live="polite">
-      <div class="aurora" aria-hidden="true"></div>
-      <div class="ambient" aria-hidden="true"></div>
       <button class="arrow arrow-left" id="prevWorld" aria-label="Previous world">‹</button>
       <article class="world-card" id="worldCard">
         <div class="world-frame">
           <img id="worldImage" src="./assets/frozen-orbit.png" alt="Frozen Orbit world" />
-          <div class="world-sheen"></div>
           <div class="vignette"></div>
           <div class="corner corner-a"></div><div class="corner corner-b"></div><div class="corner corner-c"></div><div class="corner corner-d"></div>
         </div>
@@ -43,18 +37,16 @@
       </article>
       <button class="arrow arrow-right" id="nextWorld" aria-label="Next world">›</button>
     </section>
+    <div class="scenery scenery-front" aria-hidden="true"><img id="atlasForeground" alt="" /></div>
     <nav class="world-rail" id="worldRail" aria-label="Choose a world"></nav>
   </main>
 
   <section class="game" id="game" aria-label="World explorer" aria-hidden="true">
-    <div class="game-sky" id="gameSky">
+    <div class="game-sky" id="gameSky" aria-hidden="true">
       <img class="game-sky-image" id="gameSkyImage" src="./assets/frozen-orbit.png" alt="" />
-      <img class="game-depth-image" id="gameDepthImage" src="./assets/frozen-orbit.png" alt="" />
       <div class="game-atmosphere"></div>
-      <div class="game-horizon"></div>
-      <div class="game-floor"></div>
-      <div class="game-halo"></div>
     </div>
+    <div class="scenery game-scenery" aria-hidden="true"><img id="gameEnvironment" alt="" /></div>
     <div class="diorama" id="diorama">
       <div class="terrain" id="terrain">
         <img id="terrainImage" src="./assets/frozen-orbit.png" alt="" draggable="false" />
@@ -63,6 +55,7 @@
         <div class="terrain-glass"></div>
       </div>
     </div>
+    <div class="scenery scenery-front game-foreground" aria-hidden="true"><img id="gameForeground" alt="" /></div>
     <div class="mist" aria-hidden="true"></div>
     <header class="game-hud">
       <button class="hud-button back" id="exitWorld" aria-label="Return to world atlas"><span>←</span> ATLAS</button>
@@ -83,6 +76,6 @@
   </section>
 
   <div class="curtain" id="curtain" aria-hidden="true"><span>✦</span></div>
-  <script src="./app.js?v=20260929-1"></script>
+  <script src="./app.js?v=20260929-b"></script>
 </body>
 </html>

@@ -7,14 +7,14 @@ const worlds=[
   {title:'NOCTURNE MARSH',image:'nocturne-marsh.png',accent:'#9c82ff',skyTop:'#7daed0',skyMid:'#345f91',skyBottom:'#101f4a',surface:'#d8d5ff'},
   {title:'VERDANT ENGINE',image:'verdant-engine.png',video:'verdant-engine.mp4',accent:'#80e0b2',skyTop:'#d9efb5',skyMid:'#6dac86',skyBottom:'#214c50',surface:'#eaffd8'},
   {title:'NEW MERIDIAN',image:'new-meridian.png',accent:'#65c9ff',skyTop:'#d1f2ff',skyMid:'#72bed8',skyBottom:'#2a687f',surface:'#effcff'}
-];
+].map(world=>({...world,id:world.image.replace('.png',''),environment:world.image.replace('.png','-surround-b.png')}));
 
 const atlas=document.querySelector('#atlas');
 const game=document.querySelector('#game');
 const worldImage=document.querySelector('#worldImage');
 const atlasSky=document.querySelector('#atlasSky');
-const atlasDepthFar=document.querySelector('#atlasDepthFar');
-const atlasDepthNear=document.querySelector('#atlasDepthNear');
+const atlasEnvironment=document.querySelector('#atlasEnvironment');
+const atlasForeground=document.querySelector('#atlasForeground');
 const worldTitle=document.querySelector('#worldTitle');
 const currentIndex=document.querySelector('#currentIndex');
 const rail=document.querySelector('#worldRail');
@@ -24,17 +24,33 @@ const terrain=document.querySelector('#terrain');
 const terrainImage=document.querySelector('#terrainImage');
 const terrainVideo=document.querySelector('#terrainVideo');
 const gameSkyImage=document.querySelector('#gameSkyImage');
-const gameDepthImage=document.querySelector('#gameDepthImage');
+const gameEnvironment=document.querySelector('#gameEnvironment');
+const gameForeground=document.querySelector('#gameForeground');
 const curtain=document.querySelector('#curtain');
 const zoomValue=document.querySelector('#zoomValue');
 
 let active=0;
 let playing=false;
+let transitioning=false;
+let selectionVersion=0;
+let selectionReady=false;
 let dragging=false;
 let dragStart=null;
 let lastTime=performance.now();
 const keys=new Set();
 const view={zoom:1,x:0,y:0,rx:0,ry:0};
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+const assetCache=new Map();
+game.inert=true;
+
+function loadAsset(name){
+  if(!assetCache.has(name)){
+    const image=new Image();
+    image.src=`./assets/${name}`;
+    assetCache.set(name,image.decode().then(()=>true).catch(()=>{assetCache.delete(name);return false}));
+  }
+  return assetCache.get(name);
+}
 
 worlds.forEach((world,index)=>{
   const button=document.createElement('button');
@@ -45,16 +61,27 @@ worlds.forEach((world,index)=>{
   rail.append(button);
 });
 
-function selectWorld(next){
+async function selectWorld(next){
+  if(playing||transitioning)return;
+  const version=++selectionVersion;
   active=(next+worlds.length)%worlds.length;
   const world=worlds[active];
-  [worldImage,atlasSky,atlasDepthFar,atlasDepthNear].forEach(image=>image.style.opacity='0');
-  setTimeout(()=>{
-    const source=`./assets/${world.image}`;
-    worldImage.src=source;worldImage.alt=`${world.title} world`;
-    [atlasSky,atlasDepthFar,atlasDepthNear].forEach(image=>image.src=source);
-    [worldImage,atlasSky,atlasDepthFar,atlasDepthNear].forEach(image=>image.style.opacity='');
-  },130);
+  selectionReady=false;
+  atlas.setAttribute('aria-busy','true');
+  document.querySelector('#enterWorld').disabled=true;
+  const [imageReady,environmentReady]=await Promise.all([loadAsset(world.image),loadAsset(world.environment)]);
+  if(version!==selectionVersion)return;
+  if(!imageReady){
+    atlas.setAttribute('aria-busy','false');
+    return;
+  }
+  const source=`./assets/${world.image}`;
+  worldImage.src=source;worldImage.alt=`${world.title} world`;
+  atlasSky.src=source;
+  [atlasEnvironment,atlasForeground].forEach(image=>{
+    image.hidden=!environmentReady;
+    if(environmentReady)image.src=`./assets/${world.environment}`;
+  });
   worldTitle.textContent=world.title;
   currentIndex.textContent=String(active+1).padStart(2,'0');
   document.querySelector('.eyebrow').textContent=`WORLD ${currentIndex.textContent}`;
@@ -64,8 +91,22 @@ function selectWorld(next){
   document.documentElement.style.setProperty('--sky-mid',world.skyMid);
   document.documentElement.style.setProperty('--sky-bottom',world.skyBottom);
   document.documentElement.style.setProperty('--surface',world.surface);
-  [...rail.children].forEach((element,index)=>element.classList.toggle('active',index===active));
-  rail.children[active].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  document.querySelector('meta[name="theme-color"]').content=world.skyMid;
+  [...rail.children].forEach((element,index)=>{
+    element.classList.toggle('active',index===active);
+    element.setAttribute('aria-pressed',String(index===active));
+  });
+  const selectedThumb=rail.children[active];
+  rail.scrollTo({left:selectedThumb.offsetLeft+selectedThumb.offsetWidth/2-rail.clientWidth/2,behavior:reducedMotion.matches?'instant':'smooth'});
+  const url=new URL(location.href);
+  url.searchParams.set('world',world.id);
+  history.replaceState(null,'',url);
+  selectionReady=true;
+  atlas.setAttribute('aria-busy','false');
+  document.querySelector('#enterWorld').disabled=false;
+  // Warm just the next world. Avoid downloading all eight large environments at once.
+  const upcoming=worlds[(active+1)%worlds.length];
+  setTimeout(()=>{if(version===selectionVersion){loadAsset(upcoming.image);loadAsset(upcoming.environment)}},600);
 }
 
 function clamp(value,min,max){return Math.max(min,Math.min(max,value))}
@@ -76,7 +117,10 @@ function renderView(){
   game.style.setProperty('--game-y',`${clamp(-view.y*.055,-24,24)}px`);
   game.style.setProperty('--game-far-x',`${clamp(view.x*.035,-18,18)}px`);
   game.style.setProperty('--game-far-y',`${clamp(view.y*.025,-14,14)}px`);
+  game.style.setProperty('--scenery-zoom',String(1+(view.zoom-.68)*.035));
   zoomValue.textContent=String(Math.round(view.zoom*100));
+  document.querySelector('#zoomOut').disabled=view.zoom<=.68;
+  document.querySelector('#zoomIn').disabled=view.zoom>=2.4;
 }
 
 function resetView(){
@@ -92,6 +136,8 @@ function setZoom(next){
 }
 
 function enterWorld(){
+  if(!selectionReady||playing||transitioning)return;
+  transitioning=true;
   const world=worlds[active];
   curtain.classList.add('show');
   setTimeout(()=>{
@@ -107,19 +153,24 @@ function enterWorld(){
     }
     const source=`./assets/${world.image}`;
     gameSkyImage.src=source;
-    gameDepthImage.src=source;
+    [gameEnvironment,gameForeground].forEach(image=>{image.hidden=atlasEnvironment.hidden;image.src=`./assets/${world.environment}`});
     document.querySelector('#gameTitle').textContent=world.title;
     document.querySelector('#gameIndex').textContent=`WORLD ${String(active+1).padStart(2,'0')}`;
     game.style.setProperty('--accent',world.accent);
     resetView();
     atlas.setAttribute('aria-hidden','true');
+    atlas.inert=true;
+    game.inert=false;
     game.classList.add('active');
     game.setAttribute('aria-hidden','false');
-    setTimeout(()=>curtain.classList.remove('show'),180);
+    document.querySelector('#exitWorld').focus({preventScroll:true});
+    setTimeout(()=>{curtain.classList.remove('show');transitioning=false},180);
   },220);
 }
 
 function exitWorld(){
+  if(!playing||transitioning)return;
+  transitioning=true;
   curtain.classList.add('show');
   setTimeout(()=>{
     playing=false;
@@ -128,8 +179,11 @@ function exitWorld(){
     terrainVideo.pause();
     game.classList.remove('active');
     game.setAttribute('aria-hidden','true');
+    game.inert=true;
+    atlas.inert=false;
     atlas.setAttribute('aria-hidden','false');
-    setTimeout(()=>curtain.classList.remove('show'),180);
+    document.querySelector('#enterWorld').focus({preventScroll:true});
+    setTimeout(()=>{curtain.classList.remove('show');transitioning=false},180);
   },220);
 }
 
@@ -152,7 +206,8 @@ document.querySelector('#exitWorld').addEventListener('click',exitWorld);
 document.querySelector('#resetView').addEventListener('click',resetView);
 document.querySelector('#zoomIn').addEventListener('click',()=>setZoom(view.zoom+.18));
 document.querySelector('#zoomOut').addEventListener('click',()=>setZoom(view.zoom-.18));
-document.querySelector('#fullScreen').addEventListener('click',()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()});
+document.querySelector('#fullScreen').addEventListener('click',()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.().catch(()=>{});else document.exitFullscreen?.().catch(()=>{})});
+document.querySelector('.brand').addEventListener('click',event=>{event.preventDefault();selectWorld(4)});
 
 document.addEventListener('keydown',event=>{
   const key=event.key.toLowerCase();
@@ -163,7 +218,7 @@ document.addEventListener('keydown',event=>{
   }else{
     if(key==='arrowleft')selectWorld(active-1);
     if(key==='arrowright')selectWorld(active+1);
-    if(key==='enter')enterWorld();
+    if(key==='enter'&&!event.target.closest('button,a'))enterWorld();
   }
 });
 document.addEventListener('keyup',event=>keys.delete(event.key.toLowerCase()));
@@ -191,7 +246,7 @@ game.addEventListener('wheel',event=>{event.preventDefault();setZoom(view.zoom-e
 window.addEventListener('resize',()=>{if(playing)resetView()});
 window.addEventListener('blur',()=>{keys.clear();endDrag()});
 document.addEventListener('mousemove',event=>{
-  if(playing||innerWidth<721)return;
+  if(playing||innerWidth<721||reducedMotion.matches)return;
   const rx=(event.clientY/innerHeight-.5)*-2.2;
   const ry=(event.clientX/innerWidth-.5)*2.6;
   const nx=event.clientX/innerWidth-.5;
@@ -199,15 +254,17 @@ document.addEventListener('mousemove',event=>{
   card.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg)`;
   atlas.style.setProperty('--atlas-x',`${nx*-18}px`);
   atlas.style.setProperty('--atlas-y',`${ny*-12}px`);
-  atlas.style.setProperty('--atlas-far-x',`${nx*10}px`);
-  atlas.style.setProperty('--atlas-far-y',`${ny*7}px`);
-  atlas.style.setProperty('--atlas-near-x',`${nx*-28}px`);
-  atlas.style.setProperty('--atlas-near-y',`${ny*-12}px`);
+  atlas.style.setProperty('--atlas-far-x',`${nx*6}px`);
+  atlas.style.setProperty('--atlas-far-y',`${ny*4}px`);
+  atlas.style.setProperty('--atlas-near-x',`${nx*-12}px`);
+  atlas.style.setProperty('--atlas-near-y',`${ny*-7}px`);
 });
 document.addEventListener('mouseleave',()=>{
   card.style.transform='rotateX(0) rotateY(0)';
   ['--atlas-x','--atlas-y','--atlas-far-x','--atlas-far-y','--atlas-near-x','--atlas-near-y'].forEach(name=>atlas.style.setProperty(name,'0px'));
 });
 
-selectWorld(0);
+const requestedWorld=new URL(location.href).searchParams.get('world');
+const initialWorld=worlds.findIndex(world=>world.id===requestedWorld);
+selectWorld(initialWorld<0?4:initialWorld);
 requestAnimationFrame(tick);
