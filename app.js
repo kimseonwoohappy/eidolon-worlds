@@ -1,17 +1,20 @@
 const worlds=[
-  {title:'FROZEN ORBIT',image:'frozen-orbit.png',accent:'#8ce8ff'},
-  {title:'CORAL CROWN',image:'coral-crown.png',accent:'#5ff7e3'},
-  {title:'FORGE DEPTHS',image:'forge-depths.png',accent:'#ff7d32'},
-  {title:'AETHER REACH',image:'aether-reach.png',accent:'#ffd58a'},
-  {title:'SUNVAULT',image:'sunvault.png',accent:'#ffbd55'},
-  {title:'NOCTURNE MARSH',image:'nocturne-marsh.png',accent:'#9c82ff'},
-  {title:'VERDANT ENGINE',image:'verdant-engine.png',video:'verdant-engine.mp4',accent:'#80e0b2'},
-  {title:'NEW MERIDIAN',image:'new-meridian.png',accent:'#65c9ff'}
+  {title:'FROZEN ORBIT',image:'frozen-orbit.png',accent:'#8ce8ff',skyTop:'#c5f1ff',skyMid:'#3e8fc2',skyBottom:'#082743',surface:'#e9fbff'},
+  {title:'CORAL CROWN',image:'coral-crown.png',accent:'#5ff7e3',skyTop:'#9ff3ff',skyMid:'#20b6cb',skyBottom:'#075b76',surface:'#e8fffa'},
+  {title:'FORGE DEPTHS',image:'forge-depths.png',accent:'#ff7d32',skyTop:'#ffb268',skyMid:'#9c3c2a',skyBottom:'#281015',surface:'#ffe0ac'},
+  {title:'AETHER REACH',image:'aether-reach.png',accent:'#ffd58a',skyTop:'#fff0bd',skyMid:'#85c5ef',skyBottom:'#345f94',surface:'#fff9e6'},
+  {title:'SUNVAULT',image:'sunvault.png',accent:'#ffbd55',skyTop:'#ffe2a2',skyMid:'#dc8b3e',skyBottom:'#71361f',surface:'#fff0c9'},
+  {title:'NOCTURNE MARSH',image:'nocturne-marsh.png',accent:'#9c82ff',skyTop:'#7daed0',skyMid:'#345f91',skyBottom:'#101f4a',surface:'#d8d5ff'},
+  {title:'VERDANT ENGINE',image:'verdant-engine.png',video:'verdant-engine.mp4',accent:'#80e0b2',skyTop:'#d9efb5',skyMid:'#6dac86',skyBottom:'#214c50',surface:'#eaffd8'},
+  {title:'NEW MERIDIAN',image:'new-meridian.png',accent:'#65c9ff',skyTop:'#d1f2ff',skyMid:'#72bed8',skyBottom:'#2a687f',surface:'#effcff'}
 ];
 
 const atlas=document.querySelector('#atlas');
 const game=document.querySelector('#game');
 const worldImage=document.querySelector('#worldImage');
+const atlasSky=document.querySelector('#atlasSky');
+const atlasDepthFar=document.querySelector('#atlasDepthFar');
+const atlasDepthNear=document.querySelector('#atlasDepthNear');
 const worldTitle=document.querySelector('#worldTitle');
 const currentIndex=document.querySelector('#currentIndex');
 const rail=document.querySelector('#worldRail');
@@ -20,6 +23,8 @@ const diorama=document.querySelector('#diorama');
 const terrain=document.querySelector('#terrain');
 const terrainImage=document.querySelector('#terrainImage');
 const terrainVideo=document.querySelector('#terrainVideo');
+const gameSkyImage=document.querySelector('#gameSkyImage');
+const gameDepthImage=document.querySelector('#gameDepthImage');
 const curtain=document.querySelector('#curtain');
 const zoomValue=document.querySelector('#zoomValue');
 
@@ -43,12 +48,22 @@ worlds.forEach((world,index)=>{
 function selectWorld(next){
   active=(next+worlds.length)%worlds.length;
   const world=worlds[active];
-  worldImage.style.opacity='0';
-  setTimeout(()=>{worldImage.src=`./assets/${world.image}`;worldImage.alt=`${world.title} world`;worldImage.style.opacity='1'},130);
+  [worldImage,atlasSky,atlasDepthFar,atlasDepthNear].forEach(image=>image.style.opacity='0');
+  setTimeout(()=>{
+    const source=`./assets/${world.image}`;
+    worldImage.src=source;worldImage.alt=`${world.title} world`;
+    [atlasSky,atlasDepthFar,atlasDepthNear].forEach(image=>image.src=source);
+    [worldImage,atlasSky,atlasDepthFar,atlasDepthNear].forEach(image=>image.style.opacity='');
+  },130);
   worldTitle.textContent=world.title;
   currentIndex.textContent=String(active+1).padStart(2,'0');
   document.querySelector('.eyebrow').textContent=`WORLD ${currentIndex.textContent}`;
   document.documentElement.style.setProperty('--accent',world.accent);
+  document.documentElement.style.setProperty('--glow',world.accent);
+  document.documentElement.style.setProperty('--sky-top',world.skyTop);
+  document.documentElement.style.setProperty('--sky-mid',world.skyMid);
+  document.documentElement.style.setProperty('--sky-bottom',world.skyBottom);
+  document.documentElement.style.setProperty('--surface',world.surface);
   [...rail.children].forEach((element,index)=>element.classList.toggle('active',index===active));
   rail.children[active].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
 }
@@ -57,6 +72,10 @@ function clamp(value,min,max){return Math.max(min,Math.min(max,value))}
 
 function renderView(){
   terrain.style.transform=`translate3d(calc(-50% + ${view.x}px),calc(-50% + ${view.y}px),0) rotateX(${view.rx}deg) rotateY(${view.ry}deg) scale(${view.zoom})`;
+  game.style.setProperty('--game-x',`${clamp(-view.x*.075,-34,34)}px`);
+  game.style.setProperty('--game-y',`${clamp(-view.y*.055,-24,24)}px`);
+  game.style.setProperty('--game-far-x',`${clamp(view.x*.035,-18,18)}px`);
+  game.style.setProperty('--game-far-y',`${clamp(view.y*.025,-14,14)}px`);
   zoomValue.textContent=String(Math.round(view.zoom*100));
 }
 
@@ -86,10 +105,12 @@ function enterWorld(){
       terrainImage.src=`./assets/${world.image}`;
       terrainImage.alt=`${world.title} isometric world`;
     }
+    const source=`./assets/${world.image}`;
+    gameSkyImage.src=source;
+    gameDepthImage.src=source;
     document.querySelector('#gameTitle').textContent=world.title;
     document.querySelector('#gameIndex').textContent=`WORLD ${String(active+1).padStart(2,'0')}`;
     game.style.setProperty('--accent',world.accent);
-    document.querySelector('#gameSky').style.background=`radial-gradient(ellipse at 50% 42%,${world.accent}50,transparent 55%),linear-gradient(180deg,#141923,#04060a 80%)`;
     resetView();
     atlas.setAttribute('aria-hidden','true');
     game.classList.add('active');
@@ -173,9 +194,20 @@ document.addEventListener('mousemove',event=>{
   if(playing||innerWidth<721)return;
   const rx=(event.clientY/innerHeight-.5)*-2.2;
   const ry=(event.clientX/innerWidth-.5)*2.6;
+  const nx=event.clientX/innerWidth-.5;
+  const ny=event.clientY/innerHeight-.5;
   card.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg)`;
+  atlas.style.setProperty('--atlas-x',`${nx*-18}px`);
+  atlas.style.setProperty('--atlas-y',`${ny*-12}px`);
+  atlas.style.setProperty('--atlas-far-x',`${nx*10}px`);
+  atlas.style.setProperty('--atlas-far-y',`${ny*7}px`);
+  atlas.style.setProperty('--atlas-near-x',`${nx*-28}px`);
+  atlas.style.setProperty('--atlas-near-y',`${ny*-12}px`);
 });
-document.addEventListener('mouseleave',()=>card.style.transform='rotateX(0) rotateY(0)');
+document.addEventListener('mouseleave',()=>{
+  card.style.transform='rotateX(0) rotateY(0)';
+  ['--atlas-x','--atlas-y','--atlas-far-x','--atlas-far-y','--atlas-near-x','--atlas-near-y'].forEach(name=>atlas.style.setProperty(name,'0px'));
+});
 
 selectWorld(0);
 requestAnimationFrame(tick);
