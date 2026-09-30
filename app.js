@@ -14,18 +14,19 @@ const game=document.querySelector('#game');
 const worldImage=document.querySelector('#worldImage');
 const atlasSky=document.querySelector('#atlasSky');
 const atlasEnvironment=document.querySelector('#atlasEnvironment');
-const atlasForeground=document.querySelector('#atlasForeground');
+const atlasObjects=document.querySelector('#atlasObjects');
 const worldTitle=document.querySelector('#worldTitle');
 const currentIndex=document.querySelector('#currentIndex');
 const rail=document.querySelector('#worldRail');
-const card=document.querySelector('#worldCard');
 const diorama=document.querySelector('#diorama');
 const terrain=document.querySelector('#terrain');
 const terrainImage=document.querySelector('#terrainImage');
 const terrainVideo=document.querySelector('#terrainVideo');
 const gameSkyImage=document.querySelector('#gameSkyImage');
 const gameEnvironment=document.querySelector('#gameEnvironment');
-const gameForeground=document.querySelector('#gameForeground');
+const gameObjects=document.querySelector('#gameObjects');
+const atlasScenery=new WorldScenery(atlasEnvironment,atlasObjects);
+const gameScenery=new WorldScenery(gameEnvironment,gameObjects);
 const curtain=document.querySelector('#curtain');
 const zoomValue=document.querySelector('#zoomValue');
 
@@ -34,6 +35,7 @@ let playing=false;
 let transitioning=false;
 let selectionVersion=0;
 let selectionReady=false;
+let activeEnvironmentImage=null;
 let dragging=false;
 let dragStart=null;
 let lastTime=performance.now();
@@ -47,7 +49,7 @@ function loadAsset(name){
   if(!assetCache.has(name)){
     const image=new Image();
     image.src=`./assets/${name}`;
-    assetCache.set(name,image.decode().then(()=>true).catch(()=>{assetCache.delete(name);return false}));
+    assetCache.set(name,image.decode().then(()=>image).catch(()=>{assetCache.delete(name);return false}));
   }
   return assetCache.get(name);
 }
@@ -78,10 +80,8 @@ async function selectWorld(next){
   const source=`./assets/${world.image}`;
   worldImage.src=source;worldImage.alt=`${world.title} world`;
   atlasSky.src=source;
-  [atlasEnvironment,atlasForeground].forEach(image=>{
-    image.hidden=!environmentReady;
-    if(environmentReady)image.src=`./assets/${world.environment}`;
-  });
+  activeEnvironmentImage=environmentReady||null;
+  atlasScenery.setImage(activeEnvironmentImage);
   worldTitle.textContent=world.title;
   currentIndex.textContent=String(active+1).padStart(2,'0');
   document.querySelector('.eyebrow').textContent=`WORLD ${currentIndex.textContent}`;
@@ -113,11 +113,6 @@ function clamp(value,min,max){return Math.max(min,Math.min(max,value))}
 
 function renderView(){
   terrain.style.transform=`translate3d(calc(-50% + ${view.x}px),calc(-50% + ${view.y}px),0) rotateX(${view.rx}deg) rotateY(${view.ry}deg) scale(${view.zoom})`;
-  game.style.setProperty('--game-x',`${clamp(-view.x*.075,-34,34)}px`);
-  game.style.setProperty('--game-y',`${clamp(-view.y*.055,-24,24)}px`);
-  game.style.setProperty('--game-far-x',`${clamp(view.x*.035,-18,18)}px`);
-  game.style.setProperty('--game-far-y',`${clamp(view.y*.025,-14,14)}px`);
-  game.style.setProperty('--scenery-zoom',String(1+(view.zoom-.68)*.035));
   zoomValue.textContent=String(Math.round(view.zoom*100));
   document.querySelector('#zoomOut').disabled=view.zoom<=.68;
   document.querySelector('#zoomIn').disabled=view.zoom>=2.4;
@@ -153,7 +148,7 @@ function enterWorld(){
     }
     const source=`./assets/${world.image}`;
     gameSkyImage.src=source;
-    [gameEnvironment,gameForeground].forEach(image=>{image.hidden=atlasEnvironment.hidden;image.src=`./assets/${world.environment}`});
+    gameScenery.setImage(activeEnvironmentImage);
     document.querySelector('#gameTitle').textContent=world.title;
     document.querySelector('#gameIndex').textContent=`WORLD ${String(active+1).padStart(2,'0')}`;
     game.style.setProperty('--accent',world.accent);
@@ -245,24 +240,13 @@ game.addEventListener('wheel',event=>{event.preventDefault();setZoom(view.zoom-e
 
 window.addEventListener('resize',()=>{if(playing)resetView()});
 window.addEventListener('blur',()=>{keys.clear();endDrag()});
-document.addEventListener('mousemove',event=>{
-  if(playing||innerWidth<721||reducedMotion.matches)return;
-  const rx=(event.clientY/innerHeight-.5)*-2.2;
-  const ry=(event.clientX/innerWidth-.5)*2.6;
-  const nx=event.clientX/innerWidth-.5;
-  const ny=event.clientY/innerHeight-.5;
-  card.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg)`;
-  atlas.style.setProperty('--atlas-x',`${nx*-18}px`);
-  atlas.style.setProperty('--atlas-y',`${ny*-12}px`);
-  atlas.style.setProperty('--atlas-far-x',`${nx*6}px`);
-  atlas.style.setProperty('--atlas-far-y',`${ny*4}px`);
-  atlas.style.setProperty('--atlas-near-x',`${nx*-12}px`);
-  atlas.style.setProperty('--atlas-near-y',`${ny*-7}px`);
-});
-document.addEventListener('mouseleave',()=>{
-  card.style.transform='rotateX(0) rotateY(0)';
-  ['--atlas-x','--atlas-y','--atlas-far-x','--atlas-far-y','--atlas-near-x','--atlas-near-y'].forEach(name=>atlas.style.setProperty(name,'0px'));
-});
+for(const [container,scenery] of [[atlas,atlasScenery],[game,gameScenery]]){
+  container.addEventListener('pointermove',event=>{
+    if(event.pointerType==='touch')return;
+    scenery.move(event.clientX/innerWidth*2-1,event.clientY/innerHeight*2-1);
+  });
+  container.addEventListener('pointerleave',()=>scenery.move(0,0));
+}
 
 const requestedWorld=new URL(location.href).searchParams.get('world');
 const initialWorld=worlds.findIndex(world=>world.id===requestedWorld);

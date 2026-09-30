@@ -1,29 +1,29 @@
-/* B — Floating surrounds. Original artwork, separate scenic cutouts, foreground. */
-:root { --scenery-zoom:1; }
+/* B — one stationary scenic plate, plus isolated object canvases. */
 .atlas,.game { overflow:clip; }
-.scenery img[hidden] { display:none; }
+.scenery-plate[hidden] { display:none; }
 button:focus-visible,a:focus-visible { outline:2px solid var(--surface); outline-offset:5px; }
 button:disabled { cursor:default; opacity:.55; }
 .atlas-backdrop,.game-sky { perspective:none; }
-.atlas-sky,.game-sky-image { inset:-5%; width:110%; height:110%; object-fit:cover; opacity:.32; filter:blur(12px) saturate(.85) brightness(1.12); transform:translate3d(var(--atlas-x),var(--atlas-y),0) scale(1.05); }
+.atlas-sky,.game-sky-image { inset:-5%; width:110%; height:110%; object-fit:cover; opacity:.32; filter:blur(12px) saturate(.85) brightness(1.12); transform:none; transition:none; }
 .atlas-atmosphere,.game-atmosphere { mix-blend-mode:normal; opacity:1; background:linear-gradient(180deg,color-mix(in srgb,var(--sky-top),transparent 35%),transparent 45%,color-mix(in srgb,var(--sky-mid),transparent 50%)),radial-gradient(ellipse at 50% 45%,color-mix(in srgb,var(--surface),transparent 76%),transparent 65%); }
 .scenery { position:absolute; inset:-1.5%; overflow:hidden; pointer-events:none; user-select:none; }
-.scenery img { width:100%; height:100%; object-fit:fill; display:block; }
-.scenery-middle { z-index:1; transform:translate3d(var(--atlas-far-x),var(--atlas-far-y),0); }
-.scenery-front { z-index:5; transform:translate3d(var(--atlas-near-x),var(--atlas-near-y),0); mask-image:radial-gradient(ellipse 27% 40% at 0 100%,#000 72%,transparent 100%),radial-gradient(ellipse 27% 40% at 100% 100%,#000 72%,transparent 100%),radial-gradient(ellipse 15% 25% at 0 0,#000 70%,transparent 100%),radial-gradient(ellipse 15% 25% at 100% 0,#000 70%,transparent 100%); }
+.scenery-plate { width:100%; height:100%; display:block; transform:none; filter:none; }
+.scenery-middle,.game-scenery { z-index:1; transform:none; }
+.scenery-objects { z-index:5; overflow:visible; }
+.scenery-object { position:absolute; display:block; pointer-events:none; will-change:transform; }
 .topbar { padding:28px 36px; pointer-events:none; }
 .topbar>* { pointer-events:auto; }
 .brand { color:#fff1cb; font-family:Georgia,serif; font-size:.94rem; font-weight:400; letter-spacing:.34em; text-shadow:0 2px 12px #482a1f; }
 .brand-mark { font-size:1.2rem; }
 .index { color:#fff9ec; text-shadow:0 1px 8px #102832; }
-.world-stage { display:flex; align-items:center; justify-content:center; gap:20px; padding:100px 0 230px; perspective:1600px; pointer-events:none; }
-.world-card { width:min(64vw,1100px,calc((100svh - 330px)*1.77778)); max-height:none; aspect-ratio:16/9; flex:none; pointer-events:auto; filter:none; }
+.world-stage { display:flex; align-items:center; justify-content:center; gap:20px; padding:100px 0 230px; perspective:none; pointer-events:none; }
+.world-card { width:min(64vw,1100px,calc((100svh - 330px)*1.77778)); max-height:none; aspect-ratio:16/9; flex:none; pointer-events:auto; filter:none; transform:none; transform-style:flat; transition:none; }
 .world-frame { border:1px solid color-mix(in srgb,var(--surface),transparent 15%); border-radius:20px; background:var(--sky-mid); box-shadow:0 24px 65px color-mix(in srgb,var(--sky-bottom),transparent 55%),0 0 0 1px color-mix(in srgb,var(--gold),transparent 50%); }
 .world-frame:after { box-shadow:inset 0 0 20px #fff1; }
 .world-card:hover .world-frame img { transform:none; }
 .vignette { background:linear-gradient(180deg,transparent 85%,color-mix(in srgb,var(--sky-bottom),transparent 76%)); }
 .corner { opacity:.55; }
-.world-title-wrap { top:calc(100% + 15px); bottom:auto; width:120%; transform:translateX(-50%) translateZ(20px); pointer-events:none; }
+.world-title-wrap { top:calc(100% + 15px); bottom:auto; width:120%; transform:translateX(-50%); pointer-events:none; }
 .eyebrow { display:none; }
 .world-title-wrap h1 { display:flex; align-items:center; justify-content:center; gap:20px; color:#fff1c8; font-size:clamp(1.6rem,3.4vw,3.4rem); font-weight:400; letter-spacing:.12em; line-height:1.05; text-shadow:0 2px 2px #40221988,0 3px 18px #392612aa; white-space:nowrap; }
 .world-title-wrap h1:before,.world-title-wrap h1:after { content:'◇'; color:var(--gold); font-size:.4em; }
@@ -38,9 +38,7 @@ button:disabled { cursor:default; opacity:.55; }
 .world-thumb { width:60px; height:38px; border-radius:6px; opacity:.66; }
 .world-thumb:hover { opacity:1; }
 .world-thumb.active { width:78px; border-color:var(--gold); box-shadow:0 0 12px #f4cf8b40; }
-.game-sky-image { transform:translate3d(var(--game-x),var(--game-y),0) scale(1.08); opacity:.4; }
-.game-scenery { z-index:1; transform:translate3d(var(--game-far-x),var(--game-far-y),0) scale(var(--scenery-zoom)); }
-.game-foreground { z-index:5; transform:translate3d(var(--game-x),var(--game-y),0) scale(1.03); }
+.game-sky-image { transform:none; opacity:.4; }
 .diorama { inset:76px 0 78px; }
 .terrain { width:min(80vw,1440px); border-radius:16px; background:var(--sky-mid); box-shadow:0 35px 90px color-mix(in srgb,var(--sky-bottom),transparent 32%),0 0 0 1px color-mix(in srgb,var(--surface),transparent 24%); }
 .terrain:before { display:none; }.terrain>img,.terrain>video { filter:none; }
@@ -53,7 +51,6 @@ button:disabled { cursor:default; opacity:.55; }
 .zoom-controls { bottom:max(21px,env(safe-area-inset-bottom)); }.zoom-controls span { color:#fff; }
 .curtain { background:var(--sky-mid); }.curtain.show { pointer-events:auto; }.curtain span { color:var(--surface); }
 @media(min-aspect-ratio:21/9) {
-  .scenery img { object-fit:cover; }
   .world-card { width:min(57vw,calc((100svh - 260px)*1.77778)); }
 }
 @media(max-width:720px) {
@@ -67,11 +64,7 @@ button:disabled { cursor:default; opacity:.55; }
   .enter { margin-top:16px; padding:12px 22px; min-width:180px; font-size:.72rem; }
   .world-rail { bottom:max(21px,env(safe-area-inset-bottom)); gap:6px; padding:6px; }
   .world-thumb { width:40px; height:31px; }.world-thumb.active { width:52px; }
-  .scenery-middle img,.game-scenery img { object-fit:cover; object-position:left center; }
-  .scenery-middle,.game-scenery { clip-path:none; mask-image:linear-gradient(90deg,#000 42%,transparent 58%); transform:none; }
-  .scenery-front { clip-path:none; mask-image:linear-gradient(90deg,transparent 42%,#000 58%); transform:none; z-index:2; }
-  .scenery-front img { object-fit:cover; object-position:right center; }
-  .game-foreground { z-index:2; }
+  .scenery-objects { display:none; }
   .game-name { top:72px; width:100%; pointer-events:none; }.game-name small { display:none; }
   .game-name strong { font-size:1rem; }.hud-right .icon-button:first-child { display:grid; }
   .diorama { inset:105px 0 80px; }.terrain { width:136vw; border-radius:12px; }
